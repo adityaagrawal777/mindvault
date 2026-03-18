@@ -6,6 +6,7 @@ import ChatArea from "./components/ChatArea"
 import FlashcardViewer from "./components/FlashcardViewer"
 import QuizViewer from "./components/QuizViewer"
 import PdfViewer from "./components/PdfViewer"
+import LandingPage from "./components/LandingPage"
 import AuthPage from "./components/AuthPage"
 import { useAuth } from "./contexts/AuthContext"
 import { api } from "./lib/api"
@@ -13,6 +14,7 @@ import { Loader2 } from "lucide-react"
 
 function App() {
   const { user, loading: authLoading, logout } = useAuth()
+  const [page, setPage] = useState('landing') // 'landing' | 'login' | 'register'
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true)
   const [currentSessionId, setCurrentSessionId] = useState(null)
@@ -139,11 +141,15 @@ function App() {
     )
   }
 
-  // Not authenticated — show login page
+  // Not authenticated — show landing or auth page
   if (!user) {
     return (
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <AuthPage />
+        {page === 'landing' ? (
+          <LandingPage onNavigate={setPage} />
+        ) : (
+          <AuthPage initialMode={page === 'register' ? 'register' : 'login'} onBack={() => setPage('landing')} />
+        )}
       </ThemeProvider>
     )
   }

@@ -374,3 +374,37 @@ body {
 .animate-quiz-wrong {
   animation: quiz-wrong 0.4s ease-out;
 }
+
+/* ── Landing Page Animations ─────────────────────────────── */
+
+@keyframes landing-float {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-20px) scale(1.03);
+  }
+}
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-landing-float {
+  animation: landing-float 8s ease-in-out infinite;
+}
+
+.animate-landing-fade-up {
+  animation: landing-fade-up 0.7s ease-out both;
+}

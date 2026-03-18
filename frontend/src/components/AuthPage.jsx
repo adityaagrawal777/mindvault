@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { FileText, LogIn, UserPlus, Loader2, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { FileText, LogIn, UserPlus, Loader2, Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react'
 
-export default function AuthPage() {
+export default function AuthPage({ initialMode = 'login', onBack }) {
   const { login, register } = useAuth()
-  const [mode, setMode] = useState('login') // 'login' | 'register'
+  const [mode, setMode] = useState(initialMode) // 'login' | 'register'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -52,6 +52,16 @@ export default function AuthPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-md px-6">
+        {/* Back to landing */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            Back to home
+          </button>
+        )}
         {/* Logo / Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 shadow-lg shadow-primary/10 mb-4">
