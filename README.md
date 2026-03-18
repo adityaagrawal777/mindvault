@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PDF Chatbot
 
 ## Overview
@@ -140,3 +141,7 @@ Located in the root directory.
 
 3.  **Access Application**
     Open your browser to `http://localhost:5173`.
+=======
+# mindvault
+This is my personal project based on rag model 
+>>>>>>> e1c617ed68cb8d3d165118cf9a184f63f4bacfdd
