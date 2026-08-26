@@ -159,7 +159,7 @@ def login(req: AuthRequest):
 @app.get("/auth/me")
 def get_me(current_user: dict = Depends(get_current_user)):
     """Get current logged-in user."""
-    return current_user
+    return {"id": current_user["user_id"], "username": current_user["username"]}
 
 
 # ── Endpoints ────────────────────────────────────────────
@@ -227,8 +227,12 @@ async def upload_pdf(file: UploadFile = File(...), current_user: dict = Depends(
         qa_chain = create_qa_chain(llm, vectorstore)
         print(f"[UPLOAD] QA chain created successfully!")
 
-        # Store chain in memory (runtime only)
-        sessions[session_id] = {"chain": qa_chain}
+        # Store chain, vectorstore, and llm in memory (runtime only)
+        sessions[session_id] = {
+            "chain": qa_chain,
+            "vectorstore": vectorstore,
+            "llm": llm
+        }
 
         # Persist session metadata to database
         db.create_session(session_id, file.filename, pdf_path, user_id=current_user["user_id"])
@@ -476,7 +480,7 @@ async def get_flashcards(session_id: str, count: int = 10):
 
 @app.get("/quiz/{session_id}", response_model=QuizResponse)
 async def get_quiz(session_id: str, difficulty: str = "medium", count: int = 10):
-    """Generate a multiple-choice quiz from the uploaded PDF.
+    """Generate a multiple-choice quiz from the uploaded PDF with level-appropriate difficulty.
     
     Query params:
         difficulty: 'easy' | 'medium' | 'hard' (default: 'medium')
@@ -491,49 +495,82 @@ async def get_quiz(session_id: str, difficulty: str = "medium", count: int = 10)
 
     # Clamp count
     count = max(5, min(20, count))
+    diff_key = difficulty.lower().strip()
 
-    # Difficulty-specific instructions
-    difficulty_instructions = {
-        "easy": (
-            "Make the questions straightforward and focus on basic recall of key facts, "
-            "definitions, and simple concepts directly stated in the document. "
-            "The wrong options should be clearly distinguishable from the correct answer."
-        ),
-        "medium": (
-            "Make the questions test understanding and comprehension. "
-            "Include questions that require connecting ideas from different parts of the document. "
-            "The wrong options should be plausible but clearly incorrect upon careful reading."
-        ),
-        "hard": (
-            "Make the questions challenging, requiring deep analysis, inference, and critical thinking. "
-            "Include questions about implications, comparisons, and nuanced details. "
-            "The wrong options should be very plausible and require careful reasoning to eliminate."
-        ),
-    }
+    session_data = sessions[session_id]
+    vectorstore = session_data.get("vectorstore")
+    llm = session_data.get("llm")
+    qa_chain = session_data.get("chain")
 
-    diff_instruction = difficulty_instructions.get(difficulty, difficulty_instructions["medium"])
+    # Tailored search queries and strict rules for each difficulty level
+    if diff_key == "easy":
+        search_query = "definition key facts vocabulary summary basic terms list purpose overview intro"
+        diff_instructions = (
+            "DIFFICULTY LEVEL: EASY\n"
+            "Create straightforward questions that test basic recall of direct facts, definitions, names, and key terms.\n"
+            "- Question style: 'What is X?', 'Which term defines Y?', 'What is the main purpose of Z?'\n"
+            "- Questions MUST be simple single-fact recall.\n"
+            "- Wrong options (distractors) MUST be clearly wrong and easily distinguishable from the correct answer."
+        )
+    elif diff_key == "hard":
+        search_query = "analysis methodology limitations edge cases trade-offs implications complex distinctions comparison contrast evaluation"
+        diff_instructions = (
+            "DIFFICULTY LEVEL: HARD\n"
+            "Create challenging questions requiring deep analysis, logical deduction, nuanced comparison, and critical evaluation.\n"
+            "- Question style: 'Which of the following best contrasts X with Y?', 'What can be inferred about...?', 'Which constraint limits...?', 'In what situation would X fail?'\n"
+            "- Questions MUST require multi-step reasoning or subtle discernment between closely related ideas.\n"
+            "- Wrong options (distractors) MUST be highly plausible, subtle, and require careful critical thinking to eliminate."
+        )
+    else:  # medium
+        diff_key = "medium"
+        search_query = "mechanism process explanation features cause effect comparison function relationship structure"
+        diff_instructions = (
+            "DIFFICULTY LEVEL: MEDIUM\n"
+            "Create moderate-level questions testing conceptual understanding, processes, and cause-and-effect relationships.\n"
+            "- Question style: 'Why does X occur?', 'How does Y function?', 'What is the primary role of Z in the process?'\n"
+            "- Questions should test understanding of how concepts interact.\n"
+            "- Wrong options (distractors) should be plausible items from the domain that are incorrect for this specific question."
+        )
+
+    # Retrieve difficulty-targeted context chunks
+    context_text = ""
+    if vectorstore:
+        try:
+            docs = vectorstore.max_marginal_relevance_search(search_query, k=12, fetch_k=30, lambda_mult=0.6)
+            context_text = "\n\n".join([f"[Passage {i+1}]: {d.page_content}" for i, d in enumerate(docs)])
+        except Exception as e:
+            print(f"[QUIZ WARNING] Search failed: {e}")
+            context_text = ""
 
     prompt = (
-        f"Generate exactly {count} multiple-choice quiz questions from this document. "
-        "Each question should have 4 options (A, B, C, D) with exactly one correct answer. "
-        f"{diff_instruction} "
-        "Return ONLY a valid JSON array with no extra text, in this exact format:\n"
-        '[{"question": "What is...?", "options": ["Option A", "Option B", "Option C", "Option D"], "correct": 0}]\n'
-        "The 'correct' field is the zero-based index (0-3) of the correct option."
+        f"{diff_instructions}\n\n"
+        f"Task: Generate exactly {count} multiple-choice quiz questions based on the document.\n"
+        "OUTPUT REQUIREMENT: Return ONLY a valid JSON array of objects with no markdown fences or extra text. Format:\n"
+        '[\n'
+        '  {\n'
+        '    "question": "Clear question text?",\n'
+        '    "options": ["Option A", "Option B", "Option C", "Option D"],\n'
+        '    "correct": 0\n'
+        '  }\n'
+        ']\n'
+        "Note: 'correct' is the zero-based index (0, 1, 2, or 3) of the correct option.\n\n"
+        f"DOCUMENT PASSAGES:\n{context_text}"
     )
 
-    qa_chain = sessions[session_id]["chain"]
-
     try:
-        result = qa_chain.invoke(prompt)
-        raw = result["answer"]
-        # Strip markdown code fences if present
+        if llm and context_text:
+            response = llm.invoke(prompt)
+            raw = response.content if hasattr(response, 'content') else str(response)
+        else:
+            result = qa_chain.invoke(prompt)
+            raw = result["answer"] if isinstance(result, dict) else str(result)
+
+        # Clean JSON text
         cleaned = raw.strip()
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
         questions = json.loads(cleaned)
 
-        # Validate structure
         if not isinstance(questions, list):
             raise ValueError("Expected a JSON array")
 

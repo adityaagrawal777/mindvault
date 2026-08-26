@@ -93,11 +93,16 @@ function App() {
     }
   }
 
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(null)
+
   const handleUpload = async (file) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       alert('Only PDF files are accepted.')
       return
     }
+    setIsUploading(true)
+    setUploadingFile(file)
     try {
       const data = await api.upload(file)
       setCurrentSessionId(data.session_id)
@@ -108,6 +113,9 @@ function App() {
       console.error('Upload failed', error)
       const msg = error?.response?.data?.detail || error.message || 'Upload failed'
       alert(`Upload failed: ${msg}`)
+    } finally {
+      setIsUploading(false)
+      setUploadingFile(null)
     }
   }
 
@@ -222,6 +230,8 @@ function App() {
                 summaryMessage={summaryMessage} 
                 onUpload={handleUpload}
                 onJumpToPage={jumpToPage}
+                isUploading={isUploading}
+                uploadingFile={uploadingFile}
             />
           </main>
 

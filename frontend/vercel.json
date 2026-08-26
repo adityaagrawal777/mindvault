@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://jinwoo-tensors-mindvault.hf.space/:path*"
+    }
+  ]
+}

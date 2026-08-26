@@ -1,147 +1,202 @@
-<<<<<<< HEAD
-# PDF Chatbot
+# 🧠 MindVault — PDF Chatbot
 
-## Overview
-A full-stack application that allows users to upload PDF documents and ask questions about their content using AI. This project leverages a Retrieval-Augmented Generation (RAG) pipeline to provide accurate answers based *only* on the uploaded document.
+> An AI-powered document assistant that lets you upload PDFs and have intelligent conversations about their content using Retrieval-Augmented Generation (RAG).
 
-## Architecture
-The application follows a modern 3-layer architecture:
+---
 
-1.  **Frontend (React + Vite)**: A responsive, dark-themed user interface for uploading PDFs and chatting.
-    *   *Port: 5173*
-2.  **Proxy Server (Express)**: A lightweight Node.js middleware to handle API requests and simplify CORS.
-    *   *Port: 3001*
-3.  **Backend (FastAPI)**: The core Python API that processes PDFs, manages embeddings, and interacts with the LLM.
-    *   *Port: 8000*
+## ✨ Features
 
-```mermaid
-graph LR
-    User -->|Browser| React[React Frontend :5173]
-    React -->|/api/*| Proxy[Express Proxy :3001]
-    Proxy -->|Forward| FastAPI[FastAPI Backend :8000]
-    FastAPI -->|Embeddings| FAISS[Vector Store]
-    FastAPI -->|Query| LLM[Groq Llama 3]
+| Feature | Description |
+|---|---|
+| 📄 **PDF Upload** | Drag-and-drop PDF upload with automatic text extraction |
+| 💬 **AI Chat** | Ask natural-language questions and get accurate, cited answers |
+| 🔄 **Streaming Responses** | Real-time token-by-token answer streaming via SSE |
+| 📝 **Document Summaries** | Generate bullet-point, detailed, or short summaries on demand |
+| 🃏 **Flashcard Generator** | AI-generated study flashcards from document content |
+| 🧪 **Quiz Mode** | Auto-generated multiple-choice quizzes (easy / medium / hard) |
+| 📖 **In-App PDF Viewer** | View the uploaded PDF alongside the chat |
+| 📚 **Session History** | Persistent chat history saved in SQLite — resume any session |
+| 🔐 **User Authentication** | JWT-based login/register with bcrypt password hashing |
+| 🌗 **Dark Mode UI** | Polished dark-themed interface with smooth animations |
+
+---
+
+## 🏗️ Architecture
+
+The application follows a **3-layer architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        USER (Browser)                           │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              FRONTEND — React + Vite (:5173)                    │
+│  Components: ChatArea, Sidebar, AuthPage, FlashcardViewer,      │
+│              QuizViewer, PdfViewer, LandingPage, Header          │
+│  State: AuthContext, Axios interceptors, localStorage            │
+└────────────────────────────┬────────────────────────────────────┘
+                             │  /api/* proxy
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              BACKEND — FastAPI + Python (:8000)                  │
+│  Modules: api.py, auth.py, database.py, pdf_loader.py,          │
+│           text_splitter.py, embeddings.py, llm.py, qa_chain.py   │
+└───────┬──────────────┬──────────────┬───────────────────────────┘
+        │              │              │
+        ▼              ▼              ▼
+   ┌─────────┐   ┌──────────┐   ┌──────────┐
+   │  SQLite  │   │  FAISS   │   │  Groq    │
+   │ Database │   │ Vectors  │   │  LLM API │
+   └─────────┘   └──────────┘   └──────────┘
 ```
 
-## Workflow & Logic
+---
 
-### 1. Frontend (React)
-Located in `frontend/src`.
--   **Tech Stack**: React 18, Vite, Lucide React (Icons), Framer Motion (Animations), Axios.
--   **Key Components**:
-    -   `App.jsx`: The main controller. It manages the global state (`sessionId`, `messages`, `file`) and handles high-level error catching (e.g., handling 404s on session delete).
-    -   `Sidebar.jsx`: Handles file uploads via drag-and-drop. It displays the active session info and provides "Get Summary" and "Delete Session" actions.
-    -   `ChatArea.jsx`: Displays the chat history. It distinguishes between user and AI messages and handles the typing indicator state.
--   **Connectivity**: `api.js` creates an Axios instance pointing to `/api`, which is configured in `vite.config.js` to proxy to the Express server.
+## 🛠️ Tech Stack Overview
 
-### 2. Proxy Server (Express)
-Located in `frontend/server.js`.
--   **Purpose**: To serve as a consistent API gateway and avoid Cross-Origin Resource Sharing (CORS) complexities during development.
--   **Function**: It uses `http-proxy-middleware` to forward all requests matching `/api/*` to the FastAPI backend at `http://localhost:8000`.
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend** | React 19, Vite 7, TailwindCSS 4 | UI framework, build tool, styling |
+| **UI Components** | Radix UI, Lucide React, Framer Motion | Accessible primitives, icons, animations |
+| **API Client** | Axios, Fetch API (SSE) | HTTP requests, streaming responses |
+| **Proxy** | Express 5, http-proxy-middleware | API gateway between frontend and backend |
+| **Backend Framework** | FastAPI, Uvicorn | Python async web framework, ASGI server |
+| **AI / LLM** | LangChain, Groq API (Compound) | RAG orchestration, LLM inference |
+| **Embeddings** | HuggingFace sentence-transformers | Text → vector conversion |
+| **Vector Store** | FAISS (faiss-cpu) | Similarity search on document embeddings |
+| **PDF Processing** | PyPDF (via LangChain PyPDFLoader) | Text extraction from PDF files |
+| **Database** | SQLite 3 | Persistent session, message, and user storage |
+| **Authentication** | PyJWT, bcrypt | JWT tokens, password hashing |
+| **Environment** | python-dotenv | Loads `.env` variables |
 
-### 3. Backend (FastAPI + LangChain)
-Located in the root directory.
--   **Tech Stack**: Python 3.10+, FastAPI, LangChain, FAISS (Vector DB), Groq (Llama 3.3 70B).
--   **Core Modules**:
-    -   `pdf_loader.py`: Uses `pypdf` to extract raw text from uploaded PDF files.
-    -   `text_splitter.py`: Splits the raw text into manageable chunks (e.g., 1000 characters) with overlap to preserve context.
-    -   `embeddings.py`: Converts text chunks into vector embeddings using HuggingFace models (`sentence-transformers/all-MiniLM-L6-v2`) and stores them in a FAISS index.
-    -   `llm.py`: Initializes the ultra-fast Groq LLM (Llama 3.3 70B) using the API key from `.env`.
-    -   `qa_chain.py`: Creates a LangChain RetrievalQA chain. This chain takes a user's question, finds relevant chunks from FAISS, and sends them to the LLM to generate an answer.
-    -   `api.py`: The FastAPI application that exposes REST endpoints:
-        -   `POST /upload`: accepts a PDF, processes it, and returns a `session_id`.
-        -   `POST /ask`: accepts a `session_id` and question, returning the AI's answer.
-        -   `GET /summary/{id}`: generates a document summary.
-        -   `DELETE /session/{id}`: clears the session and frees memory.
+> 📖 **Detailed breakdowns** of each layer are available in the [`docs/`](docs/) directory — see links below.
 
-## Detailed Step-by-Step Workflow
+---
 
-### Scenario 1: Uploading a PDF
-1.  **User Action**: User drags and drops a PDF file into the `Sidebar` component.
-2.  **Frontend (React)**:
-    *   The `onDrop` event handler captures the file.
-    *   `App.jsx` calls `uploadPDF(file)` from `api.js`.
-    *   Axios sends a `POST` request to `http://localhost:5173/api/upload` with the file as `FormData`.
-3.  **Proxy (Express)**:
-    *   Intercepts the request because it starts with `/api`.
-    *   Rewrites the path to `/upload` and forwards it to the backend at `http://localhost:8000/upload`.
-4.  **Backend (FastAPI)**:
-    *   Receives the `UploadFile`.
-    *   **Processing**:
-        1.  Saves the file to a temporary location on disk.
-        2.  `pdf_loader` extracts raw text from the PDF.
-        3.  `text_splitter` chunks the text (e.g., 1000 chars) for the LLM.
-        4.  `embeddings` converts chunks into vector representations using HuggingFace.
-        5.  `text_splitter` stores these vectors in a FAISS index (in-memory).
-        6.  Creates a LangChain `RetrievalQA` chain connected to the Groq LLM.
-        7.  Generates a unique `session_id` (UUID).
-        8.  Stores the QA chain in the global `sessions` dictionary: `sessions[session_id] = qa_chain`.
-    *   **Response**: Returns JSON `{ "session_id": "...", "filename": "...", "message": "..." }`.
-5.  **Completion**:
-    *   React receives the `session_id`.
-    *   `App.jsx` updates state, hiding the upload zone and showing the "Active Session" card.
+## 📚 Detailed Documentation
 
-### Scenario 2: Asking a Question
-1.  **User Action**: User types a question in `ChatArea` and hits "Send".
-2.  **Frontend (React)**:
-    *   `App.jsx` immediately adds the user's message to the `messages` state (optimistic UI).
-    *   Calls `askQuestion(sessionId, question)` from `api.js`.
-    *   Axios sends `POST /api/ask` with JSON `{ "session_id": "...", "question": "..." }`.
-3.  **Proxy (Express)**:
-    *   Forwards request to `http://localhost:8000/ask`.
-4.  **Backend (FastAPI)**:
-    *   Lookups the session: `chain = sessions.get(session_id)`.
-    *   **RAG Pipeline**:
-        1.  `chain.invoke(question)` is called.
-        2.  **Retrieval**: FAISS finds the top 3-4 text chunks most relevant to the question.
-        3.  **Generation**: Constructs a prompt containing the question + retrieved text chunks.
-        4.  **Inference**: Sends prompt to Groq (Llama 3.3).
-    *   **Response**: Returns JSON `{ "answer": "The document says..." }`.
-5.  **Completion**:
-    *   React receives the answer.
-    *   `App.jsx` adds the AI's response to the chat history.
+| Document | Covers |
+|---|---|
+| [Frontend Stack](docs/FRONTEND.md) | React, Vite, TailwindCSS, Radix UI, Framer Motion, component architecture |
+| [Backend Stack](docs/BACKEND.md) | FastAPI, Uvicorn, REST API endpoints, authentication, database layer |
+| [AI & RAG Pipeline](docs/AI_RAG_PIPELINE.md) | LangChain, Groq LLM, embeddings, FAISS, text splitting, QA chain |
 
-### Scenario 3: Deleting a Session
-1.  **User Action**: User clicks "Delete Session" in the sidebar.
-2.  **Frontend**:
-    *   Calls `deleteSession(sessionId)`.
-    *   Sends `DELETE /api/session/{id}`.
-3.  **Backend**:
-    *   Removes `session_id` from the `sessions` dictionary, freeing memory.
-    *   Returns success message.
-4.  **Completion**:
-    *   React clears `sessionId`, `file`, and `messages` from state.
-    *   UI reverts to the "Upload PDF" screen.
+---
 
-
-## Setup & Running
+## 🚀 Setup & Running
 
 ### Prerequisites
--   Node.js (v18 or higher)
--   Python (v3.10 or higher)
--   Groq API Key (set in `.env` as `GROQ_API_KEY`)
 
-### Steps
+- **Node.js** v18+
+- **Python** v3.10+
+- **Groq API Key** — get one free at [console.groq.com](https://console.groq.com)
 
-1.  **Start Backend** (Terminal 1)
-    ```powershell
-    cd d:\pdf_chatbot
-    venv\Scripts\activate
-    uvicorn api:app --reload --port 8000
-    ```
+### 1. Clone & Configure
 
-2.  **Start Frontend Proxy & UI** (Terminal 2)
-    ```powershell
-    cd d:\pdf_chatbot\frontend
-    # Starts both Express proxy and Vite dev server
-    npm run server  
-    npm run dev     
-    ```
-    *(Note: You might need two separate terminals for the frontend if `npm run dev` blocks)*
+```powershell
+git clone https://github.com/adityaagrawal777/mindvault.git
+cd mindvault
+```
 
-3.  **Access Application**
-    Open your browser to `http://localhost:5173`.
-=======
-# mindvault
-This is my personal project based on rag model 
->>>>>>> e1c617ed68cb8d3d165118cf9a184f63f4bacfdd
+Create a `.env` file in the project root:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+JWT_SECRET=your_secret_key_here
+```
+
+### 2. Install Dependencies
+
+**Backend (Python):**
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Frontend (Node.js):**
+
+```powershell
+cd frontend
+npm install
+```
+
+### 3. Run the Application
+
+Open **two terminals**:
+
+**Terminal 1 — Backend:**
+
+```powershell
+cd d:\pdf_chatbot
+venv\Scripts\activate
+uvicorn api:app --reload --port 8000
+```
+
+**Terminal 2 — Frontend:**
+
+```powershell
+cd d:\pdf_chatbot\frontend
+npm run dev
+```
+
+### 4. Open in Browser
+
+Navigate to **[http://localhost:5173](http://localhost:5173)**
+
+---
+
+## 📁 Project Structure
+
+```
+pdf_chatbot/
+├── api.py                  # FastAPI app — all REST endpoints
+├── auth.py                 # JWT + bcrypt authentication
+├── database.py             # SQLite operations (sessions, messages, users)
+├── pdf_loader.py           # PDF text extraction + cleaning
+├── text_splitter.py        # Document chunking (1500 chars, 300 overlap)
+├── embeddings.py           # HuggingFace embeddings + FAISS vector store
+├── llm.py                  # Groq LLM initialization
+├── qa_chain.py             # LangChain LCEL RAG chain with MMR retrieval
+├── main.py                 # CLI mode entry point
+├── requirements.txt        # Python dependencies
+├── .env                    # API keys (not committed)
+├── data/
+│   ├── chatbot.db          # SQLite database (auto-created)
+│   └── pdfs/               # Uploaded PDF storage
+├── frontend/
+│   ├── server.js           # Express proxy server
+│   ├── vite.config.js      # Vite config with proxy
+│   ├── package.json        # Node.js dependencies
+│   └── src/
+│       ├── App.jsx         # Main app controller
+│       ├── main.jsx        # React entry point
+│       ├── index.css       # Global styles
+│       ├── lib/
+│       │   └── api.js      # API client (Axios + SSE streaming)
+│       ├── contexts/
+│       │   └── AuthContext.jsx  # Authentication state provider
+│       └── components/
+│           ├── ChatArea.jsx         # Chat interface with streaming
+│           ├── Sidebar.jsx          # Session list + PDF upload
+│           ├── AuthPage.jsx         # Login / Register page
+│           ├── LandingPage.jsx      # Landing / hero page
+│           ├── Header.jsx           # Top navigation bar
+│           ├── PdfViewer.jsx        # In-app PDF viewer
+│           ├── FlashcardViewer.jsx  # AI flashcard UI
+│           ├── QuizViewer.jsx       # AI quiz UI
+│           └── ui/                  # Radix-based UI primitives
+└── docs/
+    ├── FRONTEND.md          # Detailed frontend documentation
+    ├── BACKEND.md           # Detailed backend documentation
+    └── AI_RAG_PIPELINE.md   # Detailed AI/RAG documentation
+```
+
+---
+
+## 📜 License
+
+This project is for personal/educational use.

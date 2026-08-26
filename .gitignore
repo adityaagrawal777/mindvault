@@ -1,4 +1,3 @@
-```ignore
 # Logs
 logs
 *.log
@@ -30,10 +29,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -58,6 +55,10 @@ htmlcov/
 .tox/
 .nox/
 
+# Data (runtime-generated, don't commit)
+data/chatbot.db
+data/pdfs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -68,4 +69,3 @@ htmlcov/
 *.njsproj
 *.sln
 *.sw?
-```

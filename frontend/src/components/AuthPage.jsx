@@ -1,223 +1,280 @@
-import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { FileText, LogIn, UserPlus, Loader2, Eye, EyeOff, Sparkles, ArrowLeft } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { User, Lock, Mail, ArrowRight, Shield, Zap, FileText, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 
-export default function AuthPage({ initialMode = 'login', onBack }) {
-  const { login, register } = useAuth()
-  const [mode, setMode] = useState(initialMode) // 'login' | 'register'
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+const AuthPage = ({ initialMode = 'login', onBack }) => {
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [taglineIndex, setTaglineIndex] = useState(0);
+  
+  const { login, register } = useAuth();
+  
+  const taglines = [
+    'Chat with any PDF in seconds.',
+    'AI-powered document intelligence.',
+    'Generate quizzes & flashcards instantly.'
+  ];
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTaglineIndex((prev) => (prev + 1) % taglines.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    // Reset state when switching modes
+    setError(null);
+    setUsername('');
+    setPassword('');
+    setConfirmPassword('');
+  }, [isLogin]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
 
-    if (mode === 'register' && password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-
-    setLoading(true)
     try {
-      if (mode === 'login') {
-        await login(username, password)
+      if (isLogin) {
+        await login(username, password);
       } else {
-        await register(username, password)
+        if (password !== confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
+        await register(username, password);
       }
     } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Something went wrong.'
-      setError(msg)
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
-      setLoading(false)
+      setIsLoading(false);
     }
-  }
-
-  const toggleMode = () => {
-    setMode(m => m === 'login' ? 'register' : 'login')
-    setError('')
-    setConfirmPassword('')
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-primary/8 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/3 blur-3xl" />
-      </div>
+    <div className="flex min-h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          50% { transform: translateX(5px); }
+          75% { transform: translateX(-5px); }
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-in-out;
+        }
+        @keyframes gradient-shimmer {
+          0% { background-position: 200% center; }
+          100% { background-position: -200% center; }
+        }
+        .btn-shimmer {
+          background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899, #6366f1);
+          background-size: 300% auto;
+        }
+        .btn-shimmer:hover {
+          animation: gradient-shimmer 3s linear infinite;
+        }
+      `}</style>
 
-      <div className="relative z-10 w-full max-w-md px-6">
-        {/* Back to landing */}
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-            Back to home
-          </button>
-        )}
-        {/* Logo / Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 shadow-lg shadow-primary/10 mb-4">
-            <FileText className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            PDF Chatbot
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1.5 flex items-center justify-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" />
-            AI-powered document intelligence
-          </p>
+      {/* Left Panel - Visual/Decorative */}
+      <div className="hidden lg:flex w-1/2 relative bg-slate-950 flex-col justify-between p-12 overflow-hidden border-r border-white/10">
+        {/* Animated Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob" />
+          <div className="absolute top-[20%] right-[-10%] w-[400px] h-[400px] bg-purple-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-blue-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000" />
+          
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px]"></div>
         </div>
 
-        {/* Auth Card */}
-        <div className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl shadow-xl shadow-black/5 overflow-hidden">
-          {/* Tab Switcher */}
-          <div className="flex border-b border-border/50">
-            <button
-              onClick={() => { setMode('login'); setError(''); }}
-              className={`flex-1 py-3.5 text-sm font-medium transition-all relative ${
-                mode === 'login'
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground/80'
-              }`}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Sign In
+        {/* Content */}
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-16">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                MindVault
               </span>
-              {mode === 'login' && (
-                <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-primary rounded-full" />
-              )}
+            </div>
+
+            <div className="h-24">
+              <h1 className="text-4xl lg:text-5xl font-bold leading-tight tracking-tight text-white transition-all duration-500">
+                {taglines[taglineIndex]}
+              </h1>
+            </div>
+          </div>
+
+          <div className="grid gap-6 mt-12">
+            <div className="flex items-start gap-4 bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl hover:bg-white/10 transition-colors">
+              <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-xl">
+                <Shield className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Bank-grade Security</h3>
+                <p className="text-slate-400 text-sm">Your documents are encrypted and fully private.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4 bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl hover:bg-white/10 transition-colors ml-8">
+              <div className="p-3 bg-purple-500/20 text-purple-400 rounded-xl">
+                <Zap className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">Lightning Fast AI</h3>
+                <p className="text-slate-400 text-sm">Get instant answers, summaries, and insights.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative z-10">
+        <div className="w-full max-w-md">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="group flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-8"
+            >
+              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span>Back to home</span>
             </button>
-            <button
-              onClick={() => { setMode('register'); setError(''); }}
-              className={`flex-1 py-3.5 text-sm font-medium transition-all relative ${
-                mode === 'register'
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground/80'
-              }`}
+          )}
+
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {isLogin ? 'Welcome back' : 'Create an account'}
+            </h2>
+            <p className="text-slate-400">
+              {isLogin 
+                ? 'Enter your credentials to access your account.' 
+                : 'Sign up to start chatting with your documents.'}
+            </p>
+          </div>
+
+          {/* Custom Tab Switcher */}
+          <div className="relative flex rounded-xl bg-slate-900/50 p-1 mb-8 border border-white/5">
+            <div 
+              className={`absolute inset-y-1 w-[calc(50%-4px)] bg-slate-800 rounded-lg shadow-md transition-transform duration-300 ease-out border border-white/10 ${isLogin ? 'translate-x-0' : 'translate-x-[calc(100%+8px)]'}`}
+            />
+            <button 
+              onClick={() => setIsLogin(true)} 
+              className={`relative flex-1 py-2.5 text-sm font-medium z-10 transition-colors ${isLogin ? 'text-white' : 'text-slate-400 hover:text-slate-300'}`}
+              type="button"
             >
-              <span className="flex items-center justify-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Create Account
-              </span>
-              {mode === 'register' && (
-                <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-primary rounded-full" />
-              )}
+              Sign In
+            </button>
+            <button 
+              onClick={() => setIsLogin(false)} 
+              className={`relative flex-1 py-2.5 text-sm font-medium z-10 transition-colors ${!isLogin ? 'text-white' : 'text-slate-400 hover:text-slate-300'}`}
+              type="button"
+            >
+              Create Account
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Error */}
-            {error && (
-              <div className="px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {error}
-              </div>
-            )}
+          {error && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-start gap-3 animate-shake">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          )}
 
-            {/* Username */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Username
-              </label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2 relative group">
+              <div className="absolute top-[34px] left-4 flex items-center pointer-events-none z-10">
+                <User className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+              </div>
+              <label className="block text-sm font-medium text-slate-300 ml-1">Username</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
                 required
-                minLength={3}
-                className="w-full px-4 py-3 rounded-xl border border-border/60 bg-background/50 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                autoComplete="username"
+                className="block w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300"
+                placeholder="johndoe"
               />
             </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 pr-11 rounded-xl border border-border/60 bg-background/50 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+            <div className="space-y-2 relative group">
+              <div className="absolute top-[34px] left-4 flex items-center pointer-events-none z-10">
+                <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
               </div>
+              <label className="block text-sm font-medium text-slate-300 ml-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="block w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300"
+                placeholder="••••••••"
+              />
             </div>
 
-            {/* Confirm Password (register only) */}
-            {mode === 'register' && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Confirm Password
-                </label>
+            {!isLogin && (
+              <div className="space-y-2 relative group animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="absolute top-[34px] left-4 flex items-center pointer-events-none z-10">
+                  <Lock className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                </div>
+                <label className="block text-sm font-medium text-slate-300 ml-1">Confirm Password</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm password"
                   required
-                  minLength={6}
-                  className="w-full px-4 py-3 rounded-xl border border-border/60 bg-background/50 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
-                  autoComplete="new-password"
+                  className="block w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-700/50 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-300"
+                  placeholder="••••••••"
                 />
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              disabled={isLoading}
+              className="w-full relative group mt-8"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {mode === 'login' ? 'Signing in...' : 'Creating account...'}
-                </>
-              ) : (
-                <>
-                  {mode === 'login' ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-                  {mode === 'login' ? 'Sign In' : 'Create Account'}
-                </>
-              )}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-500 group-active:scale-95"></div>
+              <div className={`relative w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-medium text-white transition-all duration-200 active:scale-[0.98] ${isLoading ? 'bg-indigo-600' : 'btn-shimmer'}`}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>{isLogin ? 'Signing in...' : 'Creating account...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </div>
             </button>
-
-            {/* Toggle */}
-            <p className="text-center text-xs text-muted-foreground pt-2">
-              {mode === 'login' ? "Don't have an account?" : "Already have an account?"}{' '}
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="text-primary font-medium hover:underline"
-              >
-                {mode === 'login' ? 'Create one' : 'Sign in'}
-              </button>
-            </p>
           </form>
+
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
+
+export default AuthPage;

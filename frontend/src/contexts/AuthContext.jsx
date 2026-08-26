@@ -8,7 +8,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('auth_token'))
   const [loading, setLoading] = useState(true)
 
-  // Set token on axios whenever it changes
+  // Sync token to localStorage and axios whenever it changes
   useEffect(() => {
     if (token) {
       localStorage.setItem('auth_token', token)
@@ -16,24 +16,28 @@ export function AuthProvider({ children }) {
     } else {
       localStorage.removeItem('auth_token')
       api.setAuthToken(null)
+      setUser(null)
     }
   }, [token])
 
-  // Auto-check token on mount
+  // Auto-verify token on mount
   useEffect(() => {
     const checkAuth = async () => {
-      if (!token) {
+      const savedToken = localStorage.getItem('auth_token')
+      if (!savedToken) {
         setLoading(false)
         return
       }
       try {
-        api.setAuthToken(token)
+        api.setAuthToken(savedToken)
         const userData = await api.getMe()
         setUser(userData)
       } catch {
-        // Token invalid/expired
+        // Token invalid/expired — clear everything
         setToken(null)
         setUser(null)
+        localStorage.removeItem('auth_token')
+        api.setAuthToken(null)
       } finally {
         setLoading(false)
       }
@@ -58,6 +62,8 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
+    localStorage.removeItem('auth_token')
+    api.setAuthToken(null)
   }, [])
 
   return (

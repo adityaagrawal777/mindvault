@@ -6,9 +6,9 @@ load_dotenv()
 
 
 def load_llm():
-    """Load the Groq LLM (Llama 3.3 70B)."""
+    """Load the Groq LLM (Groq Compound)."""
     return ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model="groq/compound",
         temperature=0,
         api_key=os.getenv("GROQ_API_KEY")
     )

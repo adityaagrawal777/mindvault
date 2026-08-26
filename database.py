@@ -12,7 +12,7 @@ import json
 import os
 from datetime import datetime
 
-DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+DB_DIR = os.environ.get("DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
 DB_PATH = os.path.join(DB_DIR, "chatbot.db")
 PDF_DIR = os.path.join(DB_DIR, "pdfs")
 
