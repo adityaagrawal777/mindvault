@@ -1,293 +1,197 @@
-# 🚀 Deployment Guide — Vercel + Hugging Face Spaces
+# 🚀 Deployment Guide — Vercel (Frontend) + Render (Backend)
 
-> Deploy MindVault for **free** with the React frontend on **Vercel** and the FastAPI backend on **Hugging Face Spaces**.
+> Deploy MindVault for **100% free** — React frontend on **Vercel**, FastAPI backend on **Render**.
 
 ---
 
-## Table of Contents
+## Architecture
 
-- [Prerequisites](#prerequisites)
-- [Step 1: Deploy Backend to Hugging Face Spaces](#step-1-deploy-backend-to-hugging-face-spaces)
-- [Step 2: Deploy Frontend to Vercel](#step-2-deploy-frontend-to-vercel)
-- [Step 3: Test the Deployed App](#step-3-test-the-deployed-app)
-- [Troubleshooting](#troubleshooting)
-- [Limitations](#limitations)
+```
+┌──────────────────────────────┐         /api/* rewrites         ┌─────────────────────────────┐
+│   Vercel                     │ ──────────────────────────────> │   Render                    │
+│   Frontend (React)           │                                  │   Backend (FastAPI)         │
+│   mindvault.vercel.app       │ <────────────────────────────── │   mindvault-backend.onrender│
+└──────────────────────────────┘         JSON responses           └─────────────────────────────┘
+                                                                           │
+                                                                    Groq API (LLM)
+```
+
+> [!WARNING]
+> **Free tier limitation on both platforms:**
+> - Render sleeps after **15 minutes** of inactivity. Cold start takes ~2-3 minutes.
+> - Storage is **ephemeral** — uploaded PDFs and chat history reset when the service restarts.
+> - This is fine for demos and portfolio projects.
 
 ---
 
 ## Prerequisites
 
-Before starting, make sure you have:
-
-- [x] A **Hugging Face** account → [huggingface.co/join](https://huggingface.co/join)
-- [x] A **Vercel** account → [vercel.com/signup](https://vercel.com/signup) (sign up with GitHub)
-- [x] A **GitHub** account (Vercel deploys from GitHub)
-- [x] **Git** installed on your machine
+- [x] A **GitHub** account with this project pushed
+- [x] A **Vercel** account → [vercel.com/signup](https://vercel.com/signup) *(sign up with GitHub)*
+- [x] A **Render** account → [render.com](https://render.com) *(sign up with GitHub)*
 - [x] Your **Groq API key** ready
 
 ---
 
-## Step 1: Deploy Backend to Hugging Face Spaces
+## Step 1: Push Your Code to GitHub
 
-### 1.1 Create a New Space
-
-1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
-2. Fill in the form:
-   - **Space name**: `mindvault`
-   - **License**: Choose any (e.g., MIT)
-   - **SDK**: Select **Docker**
-   - **Hardware**: Keep **Free — CPU Basic** (16GB RAM)
-   - **Visibility**: Public (required for free tier)
-3. Click **Create Space**
-
-### 1.2 Set Secrets (API Keys)
-
-1. In your new Space, go to **Settings** tab
-2. Scroll to **Variables and secrets** section
-3. Add the following **secrets** (click "New secret"):
-
-   | Name | Value |
-   |---|---|
-   | `GROQ_API_KEY` | Your Groq API key (e.g., `gsk_...`) |
-   | `JWT_SECRET` | Any random string (e.g., `mindvault-prod-secret-2026`) |
-
-   > ⚠️ Use **Secrets** (not Variables) — secrets are encrypted and hidden from public view.
-
-### 1.3 Push Backend Code to the Space
-
-HF Spaces are Git repositories. You'll push your backend files to the Space repo.
-
-```powershell
-# Clone your empty HF Space
-git clone https://huggingface.co/spaces/jinwoo-tensors/mindvault
-cd mindvault
-
-# Copy backend files from your project (adjust paths as needed)
-# You need these files:
-#   Dockerfile, requirements.txt,
-#   api.py, auth.py, database.py, embeddings.py,
-#   llm.py, main.py, pdf_loader.py, qa_chain.py, text_splitter.py
-```
-
-Copy these files into the cloned Space directory:
-
-```
-mindvault/                  ← HF Space repo
-├── Dockerfile              ← From your project root
-├── requirements.txt
-├── api.py
-├── auth.py
-├── database.py
-├── embeddings.py
-├── llm.py
-├── main.py
-├── pdf_loader.py
-├── qa_chain.py
-└── text_splitter.py
-```
-
-Then push:
-
-```powershell
-cd mindvault
-git add .
-git commit -m "Deploy MindVault backend"
-git push
-```
-
-> **Note**: HF will ask for your credentials. Use your HF username and an [access token](https://huggingface.co/settings/tokens) (not your password).
-
-### 1.4 Wait for Build
-
-1. Go to your Space page: `https://huggingface.co/spaces/jinwoo-tensors/mindvault`
-2. Click the **Logs** tab to monitor the build
-3. The first build takes **5-10 minutes** (downloading dependencies + embedding model)
-4. Once you see `Uvicorn running on http://0.0.0.0:7860`, the backend is live!
-
-### 1.5 Verify Backend
-
-Open this URL in your browser:
-
-```
-https://jinwoo-tensors-mindvault.hf.space/health
-```
-
-You should see:
-```json
-{"status": "ok", "active_sessions": 0}
-```
-
-✅ Backend is deployed!
-
----
-
-## Step 2: Deploy Frontend to Vercel
-
-### 2.1 Push Project to GitHub
-
-If your project isn't already on GitHub:
+If you haven't pushed yet:
 
 ```powershell
 cd d:\pdf_chatbot
 git add .
-git commit -m "Add deployment configuration"
+git commit -m "Add deployment config for Vercel + Render"
 git push origin main
 ```
 
-### 2.2 Import to Vercel
+---
+
+## Step 2: Deploy Backend to Render
+
+### 2.1 Create a New Web Service
+
+1. Go to [dashboard.render.com](https://dashboard.render.com)
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub account if prompted
+4. Select your `mindvault` (or `pdf_chatbot`) repository
+5. Configure the service:
+
+   | Setting | Value |
+   |---|---|
+   | **Name** | `mindvault-backend` |
+   | **Region** | Choose closest to you |
+   | **Branch** | `main` |
+   | **Runtime** | `Python 3` |
+   | **Build Command** | `pip install -r requirements.txt` |
+   | **Start Command** | `uvicorn api:app --host 0.0.0.0 --port $PORT` |
+   | **Instance Type** | **Free** |
+
+6. Click **"Create Web Service"**
+
+> Render auto-detects `render.yaml` in your repo — the settings above should pre-fill automatically.
+
+### 2.2 Set Environment Variables (Secrets)
+
+On the service page, go to **"Environment"** tab and add:
+
+| Key | Value |
+|---|---|
+| `GROQ_API_KEY` | Your Groq API key (e.g., `gsk_...`) |
+| `JWT_SECRET` | Any random string (e.g., `mindvault-render-secret-2026`) |
+| `DATA_DIR` | `/tmp/data` |
+
+Click **"Save Changes"** — Render will redeploy automatically.
+
+### 2.3 Wait for Deploy
+
+1. Click the **"Logs"** tab to watch the build
+2. First build takes **3-6 minutes** (installing dependencies + downloading embedding model)
+3. You'll see: `Uvicorn running on http://0.0.0.0:PORT`
+
+### 2.4 Find Your Backend URL
+
+At the top of the service page you'll see your URL:
+```
+https://mindvault-backend.onrender.com
+```
+
+> ⚠️ If Render gives a different name, copy the exact URL — you'll need it in Step 4.
+
+### 2.5 Verify Backend
+
+Open in browser:
+```
+https://mindvault-backend.onrender.com/health
+```
+
+Expected response:
+```json
+{"status": "ok", "active_sessions": 0}
+```
+
+✅ Backend is live!
+
+---
+
+## Step 3: Deploy Frontend to Vercel
+
+### 3.1 Import to Vercel
 
 1. Go to [vercel.com/new](https://vercel.com/new)
-2. Click **Import Git Repository**
-3. Select your `mindvault` (or `pdf_chatbot`) GitHub repository
-4. Configure the project:
+2. Click **"Import Git Repository"**
+3. Select your `mindvault` GitHub repository
+4. Configure:
 
    | Setting | Value |
    |---|---|
    | **Framework Preset** | Vite |
-   | **Root Directory** | `frontend` ← **Important!** Click "Edit" and set this |
-   | **Build Command** | `npm run build` (auto-detected) |
-   | **Output Directory** | `dist` (auto-detected) |
+   | **Root Directory** | `frontend` ← **Click "Edit" and set this!** |
+   | **Build Command** | `npm run build` |
+   | **Output Directory** | `dist` |
 
-5. Click **Deploy**
+5. Click **"Deploy"**
 
-### 2.3 Update the Space URL (if different)
+### 3.2 Update vercel.json if Needed
 
-If your HF Space URL is different from `jinwoo-tensors-mindvault.hf.space`, update the rewrite destination in `frontend/vercel.json`:
+If your Render URL is different from `mindvault-backend.onrender.com`, update `frontend/vercel.json`:
 
 ```json
 {
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://YOUR-ACTUAL-SPACE-URL.hf.space/:path*"
+      "destination": "https://YOUR-ACTUAL-RENDER-URL.onrender.com/:path*"
     }
   ]
 }
 ```
 
-Commit and push — Vercel will auto-redeploy.
-
-### 2.4 Verify Frontend
-
-Vercel will give you a URL like `https://mindvault-xxx.vercel.app`. Open it and you should see the MindVault landing page!
-
-✅ Frontend is deployed!
+Commit and push — Vercel auto-redeploys in ~30 seconds.
 
 ---
 
-## Step 3: Test the Deployed App
+## Step 4: Test the Live App
 
-1. Open your Vercel URL in the browser
-2. **Register** a new account
-3. **Upload** a PDF file
-4. **Ask** a question about the document
-5. Try the **Summary**, **Flashcards**, and **Quiz** features
+1. Open your Vercel URL (e.g., `https://mindvault-xxx.vercel.app`)
+2. **Register** an account
+3. **Upload** a PDF
+4. **Ask** a question
 
-### Expected behavior
+### Expected Timing
 
-- First upload may take **30-60 seconds** (embedding generation on CPU)
-- Questions should respond in **2-5 seconds** (Groq is fast)
-- If the HF Space was sleeping, the first request may take **1-3 minutes** to wake up
+| Action | Time |
+|---|---|
+| Cold start (after sleep) | ~2-3 min |
+| PDF upload + processing | ~15-30 sec |
+| Per question | ~2-5 sec |
 
 ---
 
 ## Troubleshooting
 
-### "502 Bad Gateway" or "Application Error"
+### "Service Unavailable" or timeout
+Render is sleeping. Wait 2-3 minutes for cold start, then retry.
 
-**Cause**: The HF Space is sleeping (free tier sleeps after ~48hrs of inactivity).
+### "Failed to fetch" CORS error  
+The `vercel.json` URL doesn't match your actual Render URL. Update `frontend/vercel.json` and push.
 
-**Fix**: Visit your Space page on Hugging Face to wake it up, then try again.
+### Build fails on Render
+Check logs. Common causes:
+- Missing package in `requirements.txt`
+- Wrong start command (should be `uvicorn api:app --host 0.0.0.0 --port $PORT`)
 
----
+### "Model not found" from Groq
+`GROQ_API_KEY` env var is not set in Render. Go to Render → Environment → add it.
 
-### "Failed to fetch" or CORS errors
-
-**Cause**: The `vercel.json` rewrite URL doesn't match your actual Space URL.
-
-**Fix**: Check your Space URL format. It should be:
-```
-https://{username}-{space-name}.hf.space
-```
-For example: `https://jinwoo-tensors-mindvault.hf.space`
-
-Update `frontend/vercel.json` accordingly and redeploy.
+### Out of memory on Render
+The lighter `all-MiniLM-L6-v2` model is already configured. If you still get OOM, check Render logs.
 
 ---
 
-### Build fails on Hugging Face
+## Keeping Your Render Service Awake (Optional)
 
-**Cause**: Usually out of memory during model download.
+On the free tier, Render sleeps after 15 min of inactivity. To reduce cold starts:
+- Use [UptimeRobot](https://uptimerobot.com) (free) to ping your `/health` endpoint every 14 minutes
+- Add monitor → HTTP(s) → URL: `https://mindvault-backend.onrender.com/health` → every 14 min
 
-**Fix**: Check the build logs in the **Logs** tab. If the build runs out of memory, consider switching to the lighter embedding model in `embeddings.py`:
-
-```python
-# Lighter alternative (~80MB instead of ~420MB)
-model_name="sentence-transformers/all-MiniLM-L6-v2"
-```
-
-Also update the model name in the `Dockerfile`'s pre-download step.
-
----
-
-### "Model not found" error from Groq
-
-**Cause**: `GROQ_API_KEY` secret is not set in HF Space settings.
-
-**Fix**: Go to your Space → Settings → Variables and secrets → Add `GROQ_API_KEY`.
-
----
-
-### Vercel says "Root Directory not found"
-
-**Cause**: The root directory wasn't set to `frontend`.
-
-**Fix**: In Vercel dashboard → Project Settings → General → Root Directory → set to `frontend`.
-
----
-
-## Limitations
-
-| Limitation | Detail | Workaround |
-|---|---|---|
-| **Data is ephemeral** | SQLite DB + PDFs are lost on restart | Accept for demo; use external DB for production |
-| **Space sleeps** | After ~48hrs of inactivity | Visit Space page to wake it; use HF's "awake" option (paid) |
-| **Cold start** | First request after sleep takes 1-3 min | Pre-downloaded model in Docker helps; users see loading state |
-| **CPU only** | Embedding generation is slower on CPU | Use lighter model; Groq inference is still fast (cloud GPU) |
-| **16GB RAM limit** | Fine for single users, not for heavy concurrent load | Sufficient for portfolio/demo usage |
-
----
-
-## Architecture (Deployed)
-
-```
-User → Browser
-         │
-         ▼
-┌─────────────────────────────┐
-│  Vercel CDN                 │
-│  https://mindvault.vercel.app │
-│                             │
-│  Static React build (dist/) │
-│  vercel.json rewrites       │
-│    /api/* → HF Space        │
-└──────────┬──────────────────┘
-           │ HTTPS
-           ▼
-┌─────────────────────────────┐
-│  Hugging Face Spaces        │
-│  Docker container           │
-│                             │
-│  FastAPI (:7860)            │
-│  ├── SQLite (ephemeral)     │
-│  ├── FAISS (in-memory)      │
-│  ├── HuggingFace embeddings │
-│  └── Groq API (external)    │
-└─────────────────────────────┘
-           │ HTTPS
-           ▼
-┌─────────────────────────────┐
-│  Groq Cloud                 │
-│  LLM inference (Compound)   │
-└─────────────────────────────┘
-```
+This keeps your backend always awake — completely free!
