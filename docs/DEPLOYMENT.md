@@ -1,197 +1,136 @@
-# 🚀 Deployment Guide — Vercel (Frontend) + Render (Backend)
+# 🚀 How to Deploy MindVault (Free)
 
-> Deploy MindVault for **100% free** — React frontend on **Vercel**, FastAPI backend on **Render**.
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────┐         /api/* rewrites         ┌─────────────────────────────┐
-│   Vercel                     │ ──────────────────────────────> │   Render                    │
-│   Frontend (React)           │                                  │   Backend (FastAPI)         │
-│   mindvault.vercel.app       │ <────────────────────────────── │   mindvault-backend.onrender│
-└──────────────────────────────┘         JSON responses           └─────────────────────────────┘
-                                                                           │
-                                                                    Groq API (LLM)
-```
-
-> [!WARNING]
-> **Free tier limitation on both platforms:**
-> - Render sleeps after **15 minutes** of inactivity. Cold start takes ~2-3 minutes.
-> - Storage is **ephemeral** — uploaded PDFs and chat history reset when the service restarts.
-> - This is fine for demos and portfolio projects.
+Frontend → Vercel (free)  
+Backend → Render (free)
 
 ---
 
-## Prerequisites
+## What You Need Before Starting
 
-- [x] A **GitHub** account with this project pushed
-- [x] A **Vercel** account → [vercel.com/signup](https://vercel.com/signup) *(sign up with GitHub)*
-- [x] A **Render** account → [render.com](https://render.com) *(sign up with GitHub)*
-- [x] Your **Groq API key** ready
+- A GitHub account (your code should already be pushed)
+- A Groq API Key (you already have this in your `.env`)
 
 ---
 
-## Step 1: Push Your Code to GitHub
+## Part 1: Deploy Backend on Render
 
-If you haven't pushed yet:
+1. Go to [render.com](https://render.com) and sign up using your GitHub account
 
-```powershell
-cd d:\pdf_chatbot
-git add .
-git commit -m "Add deployment config for Vercel + Render"
-git push origin main
-```
+2. Click the "New +" button → click "Web Service"
 
----
+3. It will show your GitHub repos → select `mindvault`
 
-## Step 2: Deploy Backend to Render
+4. Fill in these settings:
 
-### 2.1 Create a New Web Service
+   - Name: `mindvault-backend`
+   - Runtime: `Python 3`
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn api:app --host 0.0.0.0 --port $PORT`
+   - Instance Type: `Free`
 
-1. Go to [dashboard.render.com](https://dashboard.render.com)
-2. Click **"New +"** → **"Web Service"**
-3. Connect your GitHub account if prompted
-4. Select your `mindvault` (or `pdf_chatbot`) repository
-5. Configure the service:
+5. Click "Create Web Service"
 
-   | Setting | Value |
-   |---|---|
-   | **Name** | `mindvault-backend` |
-   | **Region** | Choose closest to you |
-   | **Branch** | `main` |
-   | **Runtime** | `Python 3` |
-   | **Build Command** | `pip install -r requirements.txt` |
-   | **Start Command** | `uvicorn api:app --host 0.0.0.0 --port $PORT` |
-   | **Instance Type** | **Free** |
+6. Now go to the "Environment" tab on the left side and add these 3 variables:
 
-6. Click **"Create Web Service"**
+   - `GROQ_API_KEY` = (paste your Groq API key)
+   - `JWT_SECRET` = `mindvault-secret-2026`
+   - `DATA_DIR` = `/tmp/data`
 
-> Render auto-detects `render.yaml` in your repo — the settings above should pre-fill automatically.
+7. Click "Save Changes" — Render will start building (wait 3-5 minutes)
 
-### 2.2 Set Environment Variables (Secrets)
+8. When it's done, your backend URL will be shown at the top. It looks like:
+   ```
+   https://mindvault-backend.onrender.com
+   ```
 
-On the service page, go to **"Environment"** tab and add:
-
-| Key | Value |
-|---|---|
-| `GROQ_API_KEY` | Your Groq API key (e.g., `gsk_...`) |
-| `JWT_SECRET` | Any random string (e.g., `mindvault-render-secret-2026`) |
-| `DATA_DIR` | `/tmp/data` |
-
-Click **"Save Changes"** — Render will redeploy automatically.
-
-### 2.3 Wait for Deploy
-
-1. Click the **"Logs"** tab to watch the build
-2. First build takes **3-6 minutes** (installing dependencies + downloading embedding model)
-3. You'll see: `Uvicorn running on http://0.0.0.0:PORT`
-
-### 2.4 Find Your Backend URL
-
-At the top of the service page you'll see your URL:
-```
-https://mindvault-backend.onrender.com
-```
-
-> ⚠️ If Render gives a different name, copy the exact URL — you'll need it in Step 4.
-
-### 2.5 Verify Backend
-
-Open in browser:
-```
-https://mindvault-backend.onrender.com/health
-```
-
-Expected response:
-```json
-{"status": "ok", "active_sessions": 0}
-```
-
-✅ Backend is live!
+9. Test it — open this in your browser:
+   ```
+   https://mindvault-backend.onrender.com/health
+   ```
+   If you see `{"status": "ok"}` → backend is working!
 
 ---
 
-## Step 3: Deploy Frontend to Vercel
+## Part 2: Deploy Frontend on Vercel
 
-### 3.1 Import to Vercel
+1. Go to [vercel.com](https://vercel.com) and sign up using your GitHub account
 
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Click **"Import Git Repository"**
-3. Select your `mindvault` GitHub repository
-4. Configure:
+2. Click "Add New Project"
 
-   | Setting | Value |
-   |---|---|
-   | **Framework Preset** | Vite |
-   | **Root Directory** | `frontend` ← **Click "Edit" and set this!** |
-   | **Build Command** | `npm run build` |
-   | **Output Directory** | `dist` |
+3. Select your `mindvault` repo from the list
 
-5. Click **"Deploy"**
+4. Important! Click "Edit" next to Root Directory and type: `frontend`
 
-### 3.2 Update vercel.json if Needed
+5. Leave everything else as default (Vercel auto-detects Vite)
 
-If your Render URL is different from `mindvault-backend.onrender.com`, update `frontend/vercel.json`:
+6. Click "Deploy" — takes about 1 minute
+
+7. Vercel gives you a live URL like:
+   ```
+   https://mindvault-xxx.vercel.app
+   ```
+
+8. Open it in your browser → you should see the MindVault landing page!
+
+---
+
+## Part 3: Connect Frontend to Backend
+
+If your Render URL is exactly `mindvault-backend.onrender.com`, skip this step — it's already configured!
+
+If Render gave you a different URL, update this file:
+
+File: `frontend/vercel.json`
 
 ```json
 {
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://YOUR-ACTUAL-RENDER-URL.onrender.com/:path*"
+      "destination": "https://YOUR-RENDER-URL-HERE.onrender.com/:path*"
     }
   ]
 }
 ```
 
-Commit and push — Vercel auto-redeploys in ~30 seconds.
+Then push to GitHub:
+```powershell
+git add .
+git commit -m "Update backend URL"
+git push origin main
+```
+
+Vercel will auto-redeploy in ~30 seconds.
 
 ---
 
-## Step 4: Test the Live App
+## Part 4: Test Everything
 
-1. Open your Vercel URL (e.g., `https://mindvault-xxx.vercel.app`)
-2. **Register** an account
-3. **Upload** a PDF
-4. **Ask** a question
+1. Open your Vercel URL in browser
+2. Register a new account
+3. Upload a PDF
+4. Ask a question
+5. Try Summary, Flashcards, and Quiz
 
-### Expected Timing
+---
 
-| Action | Time |
+## Good to Know
+
+| Thing | Detail |
 |---|---|
-| Cold start (after sleep) | ~2-3 min |
-| PDF upload + processing | ~15-30 sec |
-| Per question | ~2-5 sec |
+| First visit is slow | Render sleeps after 15 min of no activity. First request takes ~2 min to wake up |
+| Data resets | Uploaded PDFs and chat history are lost when Render restarts (fine for demo) |
+| Auto-deploy | Every `git push` auto-redeploys both Vercel and Render |
+| Keep backend awake | Use free [UptimeRobot](https://uptimerobot.com) to ping your `/health` endpoint every 14 min |
 
 ---
 
-## Troubleshooting
+## Something Not Working?
 
-### "Service Unavailable" or timeout
-Render is sleeping. Wait 2-3 minutes for cold start, then retry.
-
-### "Failed to fetch" CORS error  
-The `vercel.json` URL doesn't match your actual Render URL. Update `frontend/vercel.json` and push.
-
-### Build fails on Render
-Check logs. Common causes:
-- Missing package in `requirements.txt`
-- Wrong start command (should be `uvicorn api:app --host 0.0.0.0 --port $PORT`)
-
-### "Model not found" from Groq
-`GROQ_API_KEY` env var is not set in Render. Go to Render → Environment → add it.
-
-### Out of memory on Render
-The lighter `all-MiniLM-L6-v2` model is already configured. If you still get OOM, check Render logs.
-
----
-
-## Keeping Your Render Service Awake (Optional)
-
-On the free tier, Render sleeps after 15 min of inactivity. To reduce cold starts:
-- Use [UptimeRobot](https://uptimerobot.com) (free) to ping your `/health` endpoint every 14 minutes
-- Add monitor → HTTP(s) → URL: `https://mindvault-backend.onrender.com/health` → every 14 min
-
-This keeps your backend always awake — completely free!
+| Problem | Fix |
+|---|---|
+| Page loads but API calls fail | Check `frontend/vercel.json` has the correct Render URL |
+| "Service Unavailable" | Render is sleeping — wait 2-3 min and refresh |
+| "Model not found" error | Add `GROQ_API_KEY` in Render → Environment tab |
+| Vercel says "Root Directory not found" | Set Root Directory to `frontend` in Vercel project settings |
+| Build fails on Render | Check Render logs — usually a missing package in `requirements.txt` |
